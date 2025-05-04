@@ -9,6 +9,7 @@ import Partners from './components/Partners';
 import Registration from './components/Registration';
 import Footer from './components/Footer';
 
+
 export default function App() {
   return (
     <div className="font-sans">

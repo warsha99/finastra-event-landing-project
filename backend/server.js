@@ -54,8 +54,8 @@ app.post('/api/register', (req, res) => {
   );
 });
 
+// In your main server file (server.js/index.js)
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
-  console.log(`Test endpoint: http://localhost:${PORT}/api/test`);
 });
