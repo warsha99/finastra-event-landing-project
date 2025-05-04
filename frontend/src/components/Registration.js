@@ -1,8 +1,6 @@
 import { useState } from 'react';
 import axios from 'axios';
-// In RegistrationForm.jsx
 
-  
 export default function RegistrationForm() {
   const [formData, setFormData] = useState({
     name: '',
@@ -11,29 +9,58 @@ export default function RegistrationForm() {
   });
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Use environment variable for API URL
+  const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api/register';
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setIsLoading(true);
+    setError('');
+
     try {
-      console.log('Submitting:', formData);
-      const response = await axios.post('http://localhost:5000/api/register', formData);
-      console.log('Response:', response);
-      setSubmitted(true);
+      const response = await axios.post(API_URL, formData, {
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        timeout: 10000 // 10 second timeout
+      });
+
+      if (response.status === 201) {
+        setSubmitted(true);
+        // Optional: Reset form after submission
+        setFormData({ name: '', email: '', message: '' });
+      }
     } catch (err) {
-      console.error('Full error object:', err);
-      console.error('Error response:', err?.response);
-      console.error('Error message:', err?.message);
-      setError(err?.response?.data?.error || 
-              err?.message || 
-              'Registration failed. Please try again later.');
+      let errorMessage = 'Registration failed. Please try again later.';
+      
+      if (err.response) {
+        // Server responded with error status
+        errorMessage = err.response.data.error || 
+                      `Server error: ${err.response.status}`;
+      } else if (err.request) {
+        // Request was made but no response
+        errorMessage = 'Network error. Please check your connection.';
+      }
+      
+      setError(errorMessage);
+      console.error('Registration error:', {
+        error: err,
+        config: err.config,
+        response: err.response
+      });
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    });
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
   };
 
   if (submitted) {
@@ -45,6 +72,7 @@ export default function RegistrationForm() {
       </div>
     );
   }
+
   return (
     <section id="register" className="py-16 bg-gray-50">
       <div className="container mx-auto px-6 max-w-2xl">
@@ -57,14 +85,18 @@ export default function RegistrationForm() {
             {error}
           </div>
         )}
+
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
-            <label htmlFor="name" className="block mb-2 font-medium">Full Name *</label>
+            <label htmlFor="name" className="block mb-2 font-medium">
+              Full Name *
+            </label>
             <input
               type="text"
               id="name"
               name="name"
               required
+              minLength={2}
               value={formData.name}
               onChange={handleChange}
               className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-finastra-blue"
@@ -72,7 +104,9 @@ export default function RegistrationForm() {
           </div>
           
           <div>
-            <label htmlFor="email" className="block mb-2 font-medium">Email *</label>
+            <label htmlFor="email" className="block mb-2 font-medium">
+              Email *
+            </label>
             <input
               type="email"
               id="email"
@@ -85,7 +119,9 @@ export default function RegistrationForm() {
           </div>
           
           <div>
-            <label htmlFor="message" className="block mb-2 font-medium">Message</label>
+            <label htmlFor="message" className="block mb-2 font-medium">
+              Message
+            </label>
             <textarea
               id="message"
               name="message"
@@ -98,9 +134,12 @@ export default function RegistrationForm() {
           
           <button
             type="submit"
-            className="w-full bg-finastra-blue hover:bg-blue-800 text-white py-3 px-6 rounded-lg font-semibold transition"
+            disabled={isLoading}
+            className={`w-full bg-finastra-blue hover:bg-blue-800 text-white py-3 px-6 rounded-lg font-semibold transition ${
+              isLoading ? 'opacity-70 cursor-not-allowed' : ''
+            }`}
           >
-            Submit Registration
+            {isLoading ? 'Submitting...' : 'Submit Registration'}
           </button>
         </form>
       </div>

@@ -1,61 +1,62 @@
+// server.js
 const express = require('express');
-const bodyParser = require('body-parser');
-const sqlite3 = require('sqlite3').verbose();
-const cors = require('cors');
+const fs = require('fs').promises;
 const path = require('path');
-
+const cors = require('cors');
 const app = express();
+
 app.use(cors());
-app.use(bodyParser.json());
-// In server.js
-app.use(cors({
-  origin: 'http://localhost:3000', // Your React app's URL
-  methods: ['POST'],
-  allowedHeaders: ['Content-Type']
-}));
+app.use(express.json());
 
-// Ensure database directory exists
-const dbPath = path.join(__dirname, 'data', 'registrations.db');
-const db = new sqlite3.Database(dbPath, (err) => {
-  if (err) {
-    console.error('Database connection error:', err.message);
-    process.exit(1); // Exit if DB connection fails
-  } else {
-    console.log('Connected to SQLite database at', dbPath);
-    db.run(`
-      CREATE TABLE IF NOT EXISTS registrations (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT NOT NULL,
-        email TEXT NOT NULL,
-        message TEXT,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-      )
-    `);
+const DATA_FILE = path.join(__dirname, 'registrations.json');
+
+// Initialize empty array if file doesn't exist
+async function initDataFile() {
+  try {
+    await fs.access(DATA_FILE);
+  } catch {
+    await fs.writeFile(DATA_FILE, '[]');
   }
-});
+}
 
-app.post('/api/register', (req, res) => {
-  const { name, email, message } = req.body;
-  
-  if (!name || !email) {
-    return res.status(400).json({ error: 'Name and email are required' });
-  }
-
-  db.run(
-    'INSERT INTO registrations (name, email, message) VALUES (?, ?, ?)',
-    [name, email, message || null],
-    function(err) {
-      if (err) {
-        console.error('Database error:', err);
-        return res.status(500).json({ error: 'Failed to save registration' });
-      }
-      res.json({ id: this.lastID });
+app.post('/api/register', async (req, res) => {
+  try {
+    const { name, email, message } = req.body;
+    
+    // Basic validation
+    if (!name || !email) {
+      return res.status(400).json({ error: 'Name and email are required' });
     }
-  );
+
+    // Read existing data
+    const data = JSON.parse(await fs.readFile(DATA_FILE));
+    
+    // Add new registration
+    const newEntry = {
+      id: Date.now(),
+      name,
+      email,
+      message: message || '',
+      date: new Date().toISOString()
+    };
+    
+    data.push(newEntry);
+    
+    // Save back to file
+    await fs.writeFile(DATA_FILE, JSON.stringify(data, null, 2));
+    
+    res.status(201).json(newEntry);
+  } catch (err) {
+    console.error('Registration error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
 });
 
-// In your main server file (server.js/index.js)
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+// Initialize and start server
+initDataFile().then(() => {
+  const PORT = process.env.PORT || 5000;
+  app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+    console.log(`Registrations saved to: ${DATA_FILE}`);
+  });
 });
