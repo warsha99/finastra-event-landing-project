@@ -32,5 +32,3 @@ The focus is on user experience (UX), performance, and accessibility.
 - Fast load times and optimized assets for performance  
 - Live demo link so stakeholders can view the landing page in action  
 
-
-## 📂 Project Structure  
